@@ -52,6 +52,9 @@ def main() -> None:
     last_scaled = scaled_scores[-1]
     last_weights = attention_weights[-1]
     last_output = contextual_vectors[-1]
+    last_shifted = last_scaled - last_scaled.max()
+    last_exp = torch.exp(last_shifted)
+    last_exp_sum = last_exp.sum()
 
     section("1. 当前位于完整推理的哪一步")
     code_block(
@@ -103,7 +106,7 @@ def main() -> None:
     print("第二个分数最高，表示在这个教学例子里，`打` 最倾向读取 `喜欢`。")
 
     section("5. 第二步：把三个分数变成读取比例")
-    print("从原始分数到读取比例，依次经过三个操作：")
+    print("先看转换总览，再逐个展开三个操作：")
     print("\n| 阶段 | 数值 | 作用 |")
     print("| --- | --- | --- |")
     print(f"| 原始分数 | `{last_raw.tolist()}` | 比较三个来源的匹配强弱 |")
@@ -116,6 +119,47 @@ def main() -> None:
         f"| Softmax | `[{last_weights[0]:.3f}, {last_weights[1]:.3f}, "
         f"{last_weights[2]:.3f}]` | 变成总和为 1 的读取比例 |"
     )
+
+    subsection("5.1 为什么除以 sqrt(3)")
+    print("`3` 来自 Query 和 Key 的向量长度：`q_打=[1,1,0]` 一共有 3 个分量，")
+    print("所以本例 `d_k=3`，缩放因子是：")
+    code_block("sqrt(d_k) = sqrt(3) = 1.732")
+    print("把三个原始分数分别除以 1.732：")
+    code_block(
+        "1 / 1.732 = 0.577\n"
+        "2 / 1.732 = 1.155\n"
+        "1 / 1.732 = 0.577\n\n"
+        "[1,2,1] -> [0.577,1.155,0.577]"
+    )
+    print("缩放没有改变大小顺序：`喜欢` 的分数仍然最高。它只控制分数幅度，")
+    print("避免向量维度增大时，点积分数自然变大并让 Softmax 过度极端。")
+
+    subsection("5.2 Causal Mask 检查哪些位置允许读取")
+    print("Causal 的意思是：当前位置只能读取自己和左侧，不能读取右侧的未来 Token。")
+    print("当前 Query 来自最后一个位置 `打`：")
+    code_block(
+        "位置：       [我, 喜欢, 打]\n"
+        "打能否读取： [是,   是, 是]\n"
+        "Mask 数值：  [0,    0,  0]"
+    )
+    print("Mask 会加到缩放分数上。三个位置都允许读取，所以这一行数值不变：")
+    code_block("[0.577,1.155,0.577] + [0,0,0] = [0.577,1.155,0.577]")
+    print("如果当前 Query 是中间的 `喜欢`，右侧的 `打` 属于未来位置，Mask 才会是：")
+    code_block("[我, 喜欢, 打] -> [0, 0, -inf]")
+    print("`-inf` 经过 Softmax 后会得到 0 权重，表示完全禁止读取。")
+
+    subsection("5.3 Softmax 把分数变成比例")
+    print("Softmax 对 `[0.577,1.155,0.577]` 做三步。实际计算先减去最大值，")
+    print("这样指数不会产生过大的数，而且最终比例不变：")
+    code_block(
+        f"① 减去最大值 1.155：[{last_shifted[0]:.3f}, "
+        f"{last_shifted[1]:.3f}, {last_shifted[2]:.3f}]\n"
+        f"② 每项取 exp：       [{last_exp[0]:.3f}, {last_exp[1]:.3f}, "
+        f"{last_exp[2]:.3f}]\n"
+        f"③ 除以总和 {last_exp_sum:.3f}："
+        f"[{last_weights[0]:.3f}, {last_weights[1]:.3f}, {last_weights[2]:.3f}]"
+    )
+    print("现在三个数都非负，并且总和为 1，所以可以直接解释成读取比例。")
     print("\n这组结果只表达一句话：")
     print(
         f"> `打` 从 `我` 读取 {last_weights[0] * 100:.1f}%，从 `喜欢` 读取 "
