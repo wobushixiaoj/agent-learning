@@ -69,7 +69,7 @@ python3 scripts/render_lesson_outputs.py
 - `README.md`：仓库入口和当前学习方式；
 - `docs/learning-roadmap.md`：整体课程顺序与边界；
 - `docs/learning-breakpoints.md`：真实提问驱动的教材变更记录；
-- `lessons/**/README.md`：单节教材；
+- `lessons/**/README.md`：单节目标、结构导航、示例约定和参考资料；
 - `lessons/**/lesson.py`：可直接运行的中文教程脚本；
 - `lessons/**/lab.py`：可选的逐段实验文件。
 - `lessons/**/OUTPUT.md`：自动生成、供学习者直接阅读的完整教程输出；
