@@ -8,7 +8,7 @@
 ```text
 先看完整位置
 -> 明确本节唯一目标
--> 运行中文教程脚本
+-> 阅读脚本生成的中文教材
 -> 从真实输出建立直觉
 -> 记录理解断点
 -> 把断点补回教材
@@ -24,19 +24,15 @@
 
 ### Day 1：Transformer 输入表示
 
-```bash
-./lessons/transformer/day01-input-representation/run.sh
-```
+直接阅读：[Day 1 教材输出](lessons/transformer/day01-input-representation/OUTPUT.md)
 
-教材：[Day 1 README](lessons/transformer/day01-input-representation/README.md)
+章节说明：[Day 1 README](lessons/transformer/day01-input-representation/README.md)
 
 ### Day 2：Self-Attention
 
-```bash
-./lessons/transformer/day02-self-attention/run.sh
-```
+直接阅读：[Day 2 教材输出](lessons/transformer/day02-self-attention/OUTPUT.md)
 
-教材：[Day 2 README](lessons/transformer/day02-self-attention/README.md)
+章节说明：[Day 2 README](lessons/transformer/day02-self-attention/README.md)
 
 ## 环境
 
@@ -46,4 +42,5 @@
 /opt/anaconda3/bin/python3
 ```
 
-需要安装 `torch` 和 `tiktoken`。脚本会直接输出中文教程，不要求先阅读源码。
+需要安装 `torch` 和 `tiktoken`。这些环境只用于生成教材；学习者默认直接阅读每课的
+`OUTPUT.md`，不需要亲自执行脚本。

@@ -39,6 +39,11 @@ Demo，而是教材的一部分；学习者在对话中提出的问题是教材�
 - 每节只解决一个主要认知跳转，其他概念放入后续课程。
 - 教材必须区分稳定原理、为教学做的简化和真实模型中的实现。
 - 用户尚未运行实验前，不直接进入结果追问。
+- 学习者默认阅读每课的 `OUTPUT.md`，不要求亲自执行脚本。
+- 修改课程 README、`lesson.py`、`lab.py` 或运行脚本后，必须运行
+  `python3 scripts/render_lesson_outputs.py`，把真实脚本输出更新到对应课程的
+  `OUTPUT.md`。
+- `OUTPUT.md` 是自动生成的阅读材料，不手工修改；需要改善讲解时修改源脚本后重新生成。
 
 ## 验证要求
 
@@ -46,11 +51,11 @@ Demo，而是教材的一部分；学习者在对话中提出的问题是教材�
 
 ```bash
 python3 -m py_compile <modified-files>
-./<modified-run-script>
+python3 scripts/render_lesson_outputs.py
 ```
 
-检查输出是否为中文、是否包含课程位置和本节结论，并确认 README 中的命令可从
-仓库根目录直接执行。
+检查生成的 `OUTPUT.md` 是否为中文、是否包含课程位置和本节结论，并确认其中内容
+来自脚本的真实运行结果。
 
 ## 文件所有权
 
@@ -60,3 +65,5 @@ python3 -m py_compile <modified-files>
 - `lessons/**/README.md`：单节教材；
 - `lessons/**/lesson.py`：可直接运行的中文教程脚本；
 - `lessons/**/lab.py`：可选的逐段实验文件。
+- `lessons/**/OUTPUT.md`：自动生成、供学习者直接阅读的完整教程输出；
+- `scripts/render_lesson_outputs.py`：运行所有课程并刷新 `OUTPUT.md`。

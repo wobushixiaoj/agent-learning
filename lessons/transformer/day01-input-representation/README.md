@@ -20,15 +20,13 @@
 
 本节不讨论 Attention、预测目标、loss 或训练过程。
 
-## 运行
+## 阅读教材
 
-从仓库根目录执行：
+直接阅读脚本实际运行后生成的完整教材：
 
-```bash
-./lessons/transformer/day01-input-representation/run.sh
-```
+[Day 1 教材输出](OUTPUT.md)
 
-脚本会按中文教程顺序输出，并在每一步给出结论。
+学习者不需要亲自执行脚本。`OUTPUT.md` 会在课程调整后由统一渲染器重新生成。
 
 ## 理解链
 
