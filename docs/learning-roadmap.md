@@ -8,28 +8,40 @@
 ## Transformer 主线
 
 ```text
-文本
--> Token 与 Token ID
--> Token Embedding + 位置信息
--> Self-Attention 读取上下文
--> Multi-Head Attention 读取不同关系
--> Residual + LayerNorm + FFN 组成一层
--> 多层堆叠形成上下文化表示
--> 输出 logits 与候选 Token 概率
--> next-token prediction 与训练 loss
--> 推理时逐 Token 生成与 KV Cache
+固定案例：我喜欢打 -> 网 -> 球
+
+先看一次完整推理
+-> 文本变成 Token ID 和初始向量
+-> “打”通过 Self-Attention 读取“我喜欢打”
+-> Residual + LayerNorm + FFN 完成一层更新
+-> 多层堆叠得到最后位置向量
+-> LM Head 输出词表 logits 和概率
+-> 选出“网”，追加后再预测“球”
+-> 推理主线走通后，再学习训练如何提高正确 Token 的概率
 ```
 
 ## 课程边界
 
 | 阶段 | 只解决的问题 | 暂不讨论 |
 | --- | --- | --- |
-| Day 1 | 文本如何变成 Transformer 输入向量 | Attention、训练目标 |
-| Day 2 | 一个 Token 如何读取其他 Token | 多头、参数训练 |
-| Day 3 | 一层 Transformer 为什么需要多头、残差、归一化和 FFN | 多层训练 |
-| Day 4 | 多层结果如何变成词表 logits | loss 与优化器 |
-| Day 5 | shifted target、交叉熵和 next-token prediction | 推理加速 |
-| Day 6 | 自回归生成、KV Cache、延迟与显存 | Agent 系统设计 |
+| Day 0 | `我喜欢打` 如何经过完整推理生成 `网球` | 矩阵细节、训练 |
+| Day 1 | `我喜欢打` 如何变成 Transformer 输入向量 | Attention、训练 |
+| Day 2 | 最后一个 Token `打` 如何读取提示词上下文 | 多头、训练 |
+| Day 3 | Attention 输出如何经过残差、LayerNorm 和 FFN | 多层训练 |
+| Day 4 | 最后位置向量如何变成 `网` 的概率并继续生成 `球` | Loss、反向传播 |
+| Day 5 | `我喜欢打网球` 如何构造 shifted target 和交叉熵 Loss | 参数更新细节 |
+| Day 6 | 反向传播和优化器如何提高正确 Token 的相对概率 | 大规模训练系统 |
+| Day 7 | KV Cache、批处理、上下文长度、延迟与显存 | Agent 系统设计 |
+
+## 统一叙事规则
+
+1. 推理主线先完整走通，之后才进入训练主线；
+2. 所有 Transformer 基础课默认沿用 `我喜欢打 -> 网 -> 球`；
+3. 每课开头都写清楚输入、输出和它在完整流程中的位置；
+4. 先沿一个 Token 走通具体案例，再介绍矩阵并行写法；
+5. 主流程只保留必要机制，统计推导和工程实现放入技术附录；
+6. Attention 输出是上下文向量，LM Head 才输出词表 logits；
+7. 真实 tokenizer 中 `网球` 是 `[网][球]` 两个 Token，需要两轮生成。
 
 ## 与 Agent 岗位的连接
 

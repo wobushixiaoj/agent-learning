@@ -3,12 +3,11 @@
 ## 当前位于哪里
 
 ```text
-原始文本
--> Token
--> Token ID
--> Token 向量 + 位置信息
--> Transformer 输入
--> [下一节：Self-Attention]
+我喜欢打
+-> [本课] Token ID -> 初始向量
+-> [Day 2] Self-Attention 读取上下文
+-> 多层 Transformer
+-> 预测下一个 Token：网
 ```
 
 ## 本节只解决什么
@@ -18,7 +17,7 @@
 3. 相同 Token ID 在同一张表中得到相同初始向量；
 4. 位置信息让模型区分相同 Token 出现在不同位置。
 
-本节不讨论 Attention、预测目标、loss 或训练过程。
+本节固定使用推理输入 `我喜欢打`，不讨论 Attention、预测结果、Loss 或训练过程。
 
 ## 阅读教材
 

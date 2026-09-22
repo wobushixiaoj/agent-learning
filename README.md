@@ -21,13 +21,23 @@
 
 完整顺序见 [学习路线](docs/learning-roadmap.md)。
 
+### Day 0：先看一次完整推理
+
+从 `我喜欢打` 开始，完整观察模型如何先生成 `网`、再生成 `球`。
+
+直接阅读：[Day 0 教材输出](lessons/transformer/day00-inference-overview/OUTPUT.md)
+
 ### Day 1：Transformer 输入表示
+
+沿用同一个案例，放大 Text、Token、Token ID、Embedding 和位置信息。
 
 直接阅读：[Day 1 教材输出](lessons/transformer/day01-input-representation/OUTPUT.md)
 
 章节说明：[Day 1 README](lessons/transformer/day01-input-representation/README.md)
 
 ### Day 2：Self-Attention
+
+只跟踪最后一个 Token `打`，观察它如何读取 `我、喜欢、打`。
 
 直接阅读：[Day 2 教材输出](lessons/transformer/day02-self-attention/OUTPUT.md)
 
