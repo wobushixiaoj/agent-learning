@@ -103,12 +103,30 @@ def main() -> None:
     print("K（Key）：每个 Token 可以用什么特征被匹配。")
     print("V（Value）：匹配成功后，真正被读取的内容。")
     print("\n本节为降低难度，令 Q = K = V = X，所以三个矩阵暂时相同。")
-    print("\n先分清单个 Token 和完整矩阵：")
-    print("- `Agent` 有自己的 Q、K、V；每一个都是长度为 3 的向量 `[1, 2, 3]`；")
-    print("- `tools` 也有自己的 Q、K、V；每一个都是长度为 3 的向量 `[3, 2, 1]`；")
-    print("- 把两个 Token 的 Query 向量上下叠放，才得到完整 Q，形状是 `(2, 3)`；")
-    print("- K、V 同理，完整矩阵的形状也都是 `(2, 3)`。")
-    print("\n> 单个 Token 的 Query 不是 `(2, 3)`；它只是完整 Q 中的一行，有 3 个分量。")
+    print("\n先用大小写严格区分单个 Token 和完整矩阵：")
+    print("- 小写 `q_Agent`：`Agent` 自己的 Query 向量，长度为 3；")
+    print("- 小写 `q_tools`：`tools` 自己的 Query 向量，长度为 3；")
+    print("- 大写 `Q`：把当前序列里所有 Token 的小写 q 上下叠放得到的完整矩阵。")
+    print("\n本例的组装过程：")
+    code_block(
+        "q_Agent = [1,2,3]    # 单个 Token，一个长度为 3 的向量\n"
+        "q_tools = [3,2,1]    # 单个 Token，一个长度为 3 的向量\n\n"
+        "Q = [q_Agent,        # 第 1 行\n"
+        "     q_tools]        # 第 2 行\n\n"
+        "Q = [[1,2,3],\n"
+        "     [3,2,1]]        # 完整 Q 的形状是 (2,3)"
+    )
+    print("K、V 同理：单个 Token 分别有小写 k、v 向量；全部 Token 叠起来得到大写 K、V。")
+    print("\n> `(2,3)` 的第一维已经包含两个 Token，因此它属于完整 Q，不能再说它只属于 `Agent`。")
+    print("\n三个层次不要混在一起：")
+    code_block(
+        "单 Token：q_Agent 或 q_tools -> (3,)\n"
+        "整条序列：Q = stack(q_Agent, q_tools) -> (2,3)\n"
+        "两两分数：Q @ K.T -> (2,2)"
+    )
+    print("**Q 只有一个吗？** 在本教程限定的“一条序列、一个 layer、一个 head”里，")
+    print("只有一个大写 Q，它包含两个 Token 的两行。真实模型有多个 layer 和 head，")
+    print("每个 head 都有自己的 Q；工程上通常把它们收进带 batch/head 维度的张量。")
     print("\n这里 Q、K、V 数值相同只是教学简化。真实模型通过不同参数生成它们，数值通常不同。")
     print_matrix("Q", query)
     print_matrix("K", key)
@@ -124,20 +142,20 @@ def main() -> None:
     subsection("3.0 先别背规则：它只是批量计算匹配分数")
     print("先只问一个非常具体的问题：**`tools` 和 `Agent` 匹不匹配？**")
     print("\n先看完整 Q，它是 2 行 3 列：\n")
-    print("| Q 中的行 | Query 向量 | 本次是否选中 |")
+    print("| Q 中的行 | 单 Token 的 q 向量 | 本次是否选中 |")
     print("| --- | --- | --- |")
     print("| `Agent` | `[1, 2, 3]` |  |")
     print("| `tools` | `[3, 2, 1]` | **是，抽出第 2 行** |")
-    print("\n> 截图里的 `tools Query` 不是完整 Q，而是从完整 Q 中抽出的一行。")
+    print("\n> 表里的 `tools Query` 更严格地应写成小写 `q_tools`，它是完整 Q 的一行。")
     print("\n同样，完整 K 也是 2 行 3 列；为了和 `tools` 比较，这次只抽出")
-    print("`Agent Key = [1, 2, 3]`，也就是 K 的第 1 行。")
+    print("`k_Agent = [1, 2, 3]`，也就是 K 的第 1 行。")
     print("\n当前教程先观察一个 Attention head。在一个 head 中，一个 Token 对应一个")
     print("Query 向量，所以 `tools` 对应一行；两个 Token 合在一起才组成完整 Q 的两行。")
     print("\n现在把选出的两个向量放进手算表。它们各有 3 个分量：\n")
     print("| 分量位置 | 1 | 2 | 3 |")
     print("| --- | ---: | ---: | ---: |")
-    print("| `tools` Query | 3 | 2 | 1 |")
-    print("| `Agent` Key | 1 | 2 | 3 |")
+    print("| `q_tools` | 3 | 2 | 1 |")
+    print("| `k_Agent` | 1 | 2 | 3 |")
     print("| 对应位置相乘 | 3×1=3 | 2×2=4 | 1×3=3 |")
     print("\n然后把最后一行加起来：\n")
     code_block("3 + 4 + 3 = 10")
@@ -188,13 +206,13 @@ def main() -> None:
     code_block("点积 = 对应位置相乘，再把乘积全部相加")
     print("\n这次不省略任何格子：")
     code_block(
-        "① Agent Query · Agent Key\n"
+        "① q_Agent · k_Agent\n"
         "   [1,2,3] · [1,2,3] = 1x1 + 2x2 + 3x3 = 14\n\n"
-        "② Agent Query · tools Key\n"
+        "② q_Agent · k_tools\n"
         "   [1,2,3] · [3,2,1] = 1x3 + 2x2 + 3x1 = 10\n\n"
-        "③ tools Query · Agent Key\n"
+        "③ q_tools · k_Agent\n"
         "   [3,2,1] · [1,2,3] = 3x1 + 2x2 + 1x3 = 10\n\n"
-        "④ tools Query · tools Key\n"
+        "④ q_tools · k_tools\n"
         "   [3,2,1] · [3,2,1] = 3x3 + 2x2 + 1x1 = 14"
     )
     print_pair_table("尚未缩放的 QK^T 原始分数", raw_scores)
