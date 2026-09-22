@@ -9,12 +9,22 @@ TOKENS = ["Agent", "uses", "tools"]
 
 
 def section(title: str) -> None:
-    print(f"\n{'=' * 72}\n{title}\n{'=' * 72}")
+    print(f"\n## {title}\n")
+
+
+def subsection(title: str) -> None:
+    print(f"\n### {title}\n")
+
+
+def code_block(value: object) -> None:
+    print("```text")
+    print(value)
+    print("```")
 
 
 def print_matrix(name: str, matrix: torch.Tensor) -> None:
-    print(f"{name}形状：{tuple(matrix.shape)}")
-    print(matrix.detach().numpy().round(3))
+    print(f"\n**{name}**，形状：`{tuple(matrix.shape)}`")
+    code_block(matrix.detach().numpy().round(3))
 
 
 def print_token_rows(tokens: list[str], matrix: torch.Tensor) -> None:
@@ -34,26 +44,24 @@ def explain_attention_rows(attention_weights: torch.Tensor) -> None:
 
 
 def print_pair_table(name: str, matrix: torch.Tensor) -> None:
-    print(f"\n{name}（行=读取者，列=信息来源）：")
-    header = "读取者\\来源".ljust(14) + "".join(
-        token.rjust(10) for token in TOKENS
-    )
-    print(header)
+    print(f"\n**{name}**（行=读取者，列=信息来源）：\n")
+    print("| 读取者 \\ 来源 | " + " | ".join(TOKENS) + " |")
+    print("| --- | " + " | ".join("---:" for _ in TOKENS) + " |")
     for token, row in zip(TOKENS, matrix.tolist()):
-        values = "".join(f"{value:10.3f}" for value in row)
-        print(token.ljust(14) + values)
+        values = " | ".join(f"{value:.3f}" for value in row)
+        print(f"| {token} | {values} |")
 
 
 def main() -> None:
-    section("Day 2：Self-Attention 如何让 Token 读取上下文")
+    section("课程位置与目标")
     print("你现在位于整条链路的这个位置：")
-    print(
+    code_block(
         "文本 -> Token -> Token ID -> 输入向量 X "
         "-> [今天学习 Self-Attention] -> 上下文化向量"
     )
-    print("\n本节 Token：", TOKENS)
+    print(f"\n本节 Token：`{TOKENS}`")
     print(
-        "本节只回答一个问题：每个 Token 应该从其他 Token 读取多少信息？"
+        "\n> **本节只回答一个问题：** 每个 Token 应该从其他 Token 读取多少信息？"
     )
     print(
         "为了先看清数据流，Q、K、V 暂时直接使用同一份输入向量。"
@@ -102,51 +110,57 @@ def main() -> None:
     section("步骤 3：QK^T 计算 Token 两两之间的匹配分数")
     print("本步骤要回答：每个 Token 与每个 Token 的匹配程度是多少？")
 
-    print("\n3.0 矩阵乘法速通：本节只需要三条规则")
-    print("规则 1：左矩阵的一行，与右矩阵的一列，计算出结果中的一个格子。")
-    print("规则 2：这一行和这一列做点积，即对应位置相乘，再把乘积相加。")
-    print("规则 3：左矩阵列数必须等于右矩阵行数；结果保留外侧两个数字。")
+    subsection("3.0 矩阵乘法速通：本节只需要三条规则")
+    print("- **规则 1：** 左矩阵的一行，与右矩阵的一列，计算出结果中的一个格子。")
+    print("- **规则 2：** 这一行和这一列做点积，即对应位置相乘，再把乘积相加。")
+    print("- **规则 3：** 左矩阵列数必须等于右矩阵行数；结果保留外侧两个数字。")
     print("\n套到本例：")
-    print("  Q    (3, 4)：左边有 3 行，每行有 4 个数")
-    print("  K.T  (4, 3)：右边有 3 列，每列有 4 个数")
-    print("  结果 (3, 3)：3 行分别乘 3 列，一共得到 9 个格子")
-    print("  中间的 4 和 4 必须相同，因为一次点积需要两组同样多的数。")
+    print("- `Q (3, 4)`：左边有 3 行，每行有 4 个数")
+    print("- `K.T (4, 3)`：右边有 3 列，每列有 4 个数")
+    print("- `结果 (3, 3)`：3 行分别乘 3 列，一共得到 9 个格子")
+    print("- 中间的 `4` 和 `4` 必须相同，因为一次点积需要两组同样多的数。")
     print("\n可以先把矩阵乘法理解为：批量执行‘一行与一列的点积’。")
     print("它不是把两个矩阵相同位置的数字直接相乘。")
     print_matrix("转置后的 K.T", key.T)
-    print("例如结果左上角 = Q 第 1 行 · K.T 第 1 列：")
-    print("  [1, 0, 1, 0] · [1, 0, 1, 0]")
-    print("= 1x1 + 0x0 + 1x1 + 0x0")
-    print("= 2")
+    print("例如结果左上角 = Q 第 1 行 · K.T 第 1 列：\n")
+    code_block(
+        "[1, 0, 1, 0] · [1, 0, 1, 0]\n"
+        "= 1x1 + 0x0 + 1x1 + 0x0\n"
+        "= 2"
+    )
 
-    print("\n3.1 为什么要写 K.T？")
+    subsection("3.1 为什么要写 K.T？")
     print("Q 的形状是 (3, 4)：3 个 Token，每个 Query 有 4 个数。")
     print("K 的形状也是 (3, 4)。")
     print("K.T 表示把 K 转置，所以形状从 (3, 4) 变成 (4, 3)。")
-    print("这样才能进行矩阵乘法：")
-    print("  Q (3, 4) @ K.T (4, 3) -> 原始分数 (3, 3)")
+    print("这样才能进行矩阵乘法：\n")
+    code_block("Q (3, 4) @ K.T (4, 3) -> 原始分数 (3, 3)")
     print("中间的两个 4 对齐；结果保留外侧的 3 和 3。")
     print("最终 3 x 3 表示：3 个读取者分别与 3 个信息来源进行匹配。")
 
-    print("\n3.2 一个格子的数字怎么计算？")
+    subsection("3.2 一个格子的数字怎么计算？")
     print("每个格子都是一行 Query 与一行 Key 的点积：")
-    print("  点积 = 对应位置相乘，再把乘积全部相加")
+    code_block("点积 = 对应位置相乘，再把乘积全部相加")
     print("\n完整手算 'tools' 这一行：")
-    print("tools 的 Query = [1, 1, 0, 1]")
-    print("Agent 的 Key   = [1, 0, 1, 0]")
-    print("uses 的 Key    = [0, 1, 1, 0]")
-    print("tools 的 Key   = [1, 1, 0, 1]")
-    print("\ntools 与 Agent：1x1 + 1x0 + 0x1 + 1x0 = 1")
-    print("tools 与 uses： 1x0 + 1x1 + 0x1 + 1x0 = 1")
-    print("tools 与 tools：1x1 + 1x1 + 0x0 + 1x1 = 3")
+    code_block(
+        "tools 的 Query = [1, 1, 0, 1]\n"
+        "Agent 的 Key   = [1, 0, 1, 0]\n"
+        "uses 的 Key    = [0, 1, 1, 0]\n"
+        "tools 的 Key   = [1, 1, 0, 1]\n\n"
+        "tools 与 Agent：1x1 + 1x0 + 0x1 + 1x0 = 1\n"
+        "tools 与 uses： 1x0 + 1x1 + 0x1 + 1x0 = 1\n"
+        "tools 与 tools：1x1 + 1x1 + 0x0 + 1x1 = 3"
+    )
     print_pair_table("尚未缩放的 QK^T 原始分数", raw_scores)
 
-    print("\n3.3 为什么原始分数还要缩放？")
+    subsection("3.3 为什么原始分数还要缩放？")
     print(f"每个向量有 4 维，所以 sqrt(4) = {scale:.1f}。")
-    print("把每个原始分数都除以 2：")
-    print("  tools -> Agent：1 / 2 = 0.5")
-    print("  tools -> uses： 1 / 2 = 0.5")
-    print("  tools -> tools：3 / 2 = 1.5")
+    print("把每个原始分数都除以 2：\n")
+    code_block(
+        "tools -> Agent：1 / 2 = 0.5\n"
+        "tools -> uses： 1 / 2 = 0.5\n"
+        "tools -> tools：3 / 2 = 1.5"
+    )
     print("缩放用于避免向量维度较大时点积过大，让后面的 Softmax 过于极端。")
     print_pair_table("缩放后的 Attention 分数", scores)
     print("\n到这里得到的仍是匹配分数，还不是最终读取比例。")
@@ -174,17 +188,17 @@ def main() -> None:
     print_matrix("融合上下文后的向量", contextual_vectors)
     print("\n以 'tools' 为例，它的新向量来自：")
     for token, weight in zip(TOKENS, attention_weights[2].tolist()):
-        print(f"  {weight:.3f} x {token!r} 的 V 向量")
+        print(f"- `{weight:.3f} x {token!r}` 的 V 向量")
     print("\n因此，'tools' 的新向量不再只包含自己，也混入了前文信息。")
 
-    section("Day 2 完整链路")
-    print(
+    section("本节总结")
+    code_block(
         "输入向量 X -> Q、K、V -> QK^T 匹配分数 "
         "-> Causal Mask -> Softmax 权重 -> 对 V 加权求和 -> 上下文化向量"
     )
-    print("\n本节只需要记住：")
-    print("Self-Attention 让每个 Token 按不同权重读取其他 Token 的信息。")
-    print("\n观察题：为什么 'Agent' 的 Attention 权重是 [1, 0, 0]？")
+    print("\n> **本节只需要记住：** Self-Attention 让每个 Token 按不同权重读取其他 Token 的信息。")
+    print("\n### 观察题\n")
+    print("为什么 `Agent` 的 Attention 权重是 `[1, 0, 0]`？")
 
 
 if __name__ == "__main__":

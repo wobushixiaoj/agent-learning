@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""运行全部教程脚本，并把真实终端输出写成每课的 Markdown 教材。"""
+"""运行全部教程脚本，并把脚本输出的 Markdown 正文写成每课教材。"""
 
 from pathlib import Path
 import subprocess
@@ -21,12 +21,10 @@ def render(run_script: Path) -> None:
     readme_first_line = (lesson_dir / "README.md").read_text(encoding="utf-8").splitlines()[0]
     title = readme_first_line.removeprefix("# ")
     markdown = (
-        f"# {title}：脚本输出教材\n\n"
+        f"# {title}\n\n"
         "> 本文件由教程脚本自动生成。请修改源脚本后重新渲染，不要手工编辑。\n\n"
         f"生成来源：`{relative_script}`\n\n"
-        "```text\n"
         f"{result.stdout.strip()}\n"
-        "```\n"
     )
     output_path = lesson_dir / "OUTPUT.md"
     output_path.write_text(markdown, encoding="utf-8")
