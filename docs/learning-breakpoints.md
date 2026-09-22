@@ -25,6 +25,7 @@
 | ATT-007 | 感觉仍没讲清楚，是否每个 Token 的 QKV 都是 `(3,4)`？希望改成 `(2,3)`，使用 `1、2、3` 占位并画出完整计算 | context-induced | 示例维度和二进制数值增加了干扰，且没有把“单 Token 的向量”与“全部 Token 组成的矩阵”完整并排计算 | Day 2 全面改成 2 个 Token、每个向量 3 维；明确单 Token 的 Q/K/V 各是长度 3 的向量、完整 Q/K/V 才是 `(2,3)`，并展开 `QK^T` 的全部 4 个格子 |
 | ATT-008 | Q 是由 `Agent` 和 `tools` 放在一起形成的两行矩阵吗？Q 只有一个吗？原以为每个 Token 各有一个 `(2,3)` 的 Q | context-induced | 教材用大写 Q 同时指代单 Token 向量和完整矩阵，缺少大小写记号与作用域说明 | 使用小写 `q_Agent`、`q_tools` 表示单 Token Query 向量，大写 `Q` 表示当前序列在当前 layer/head 的完整矩阵；增加 `q -> Q -> QK^T` 形状阶梯与多头边界 |
 | ATT-009 | 大写 Q 真的是由小写 q 叠起来的吗？Q 有什么作用？Attention 不是每个 Token 的 qkv 分别计算吗？ | precision | 教材说明了容器关系，但没有区分“数学上的行堆叠关系”“实际的矩阵投影实现”与“逐 Token/矩阵并行两种等价计算视角” | 补充 `q_i=x_iW_Q` 与 `Q=XW_Q` 的逐行等价；展示 `q_iK^T` 逐 Token 得分与 `QK^T` 一次得到全部得分完全相同，并说明每个 q_i 会匹配所有 k_j、加权所有 v_j |
+| ATT-010 | 能否在页面顶部用流程图或时序图表达这一页知识点的关系？ | context-induced | 章节已有局部解释，但缺少进入细节前可反复定位的全局结构图 | 在 Day 2 顶部增加 Mermaid 知识流程图，串联 X、QKV、单 Token 行向量、QK^T、缩放、Mask、Softmax、V 加权与输出，并标注关键 Shape |
 
 ## 学习方式
 

@@ -1,5 +1,32 @@
 # Day 2：Self-Attention 如何读取上下文
 
+## 本页知识流程图
+
+```mermaid
+flowchart TD
+    X["输入矩阵 X<br/>2 个 Token × 3 个分量<br/>Shape: (2,3)"]
+    P["生成 Q / K / V<br/>真实模型: XW_Q、XW_K、XW_V<br/>本节简化: Q=K=V=X"]
+    M["完整矩阵 Q、K、V<br/>每个 Shape: (2,3)"]
+    R["取第 i 行<br/>单 Token 向量 q_i、k_i、v_i<br/>每个 Shape: (3,)"]
+    S["批量两两匹配 QK^T<br/>等价于每个 q_i 与所有 k_j 点积<br/>Shape: (2,2)"]
+    D["缩放<br/>除以 sqrt(d_k)=sqrt(3)"]
+    C["Causal Mask<br/>禁止读取未来 Token"]
+    A["Softmax 权重 A<br/>Shape: (2,2)"]
+    W["对 V 加权求和<br/>A @ V"]
+    O["上下文化输出 O<br/>Shape: (2,3)"]
+
+    X --> P --> M
+    M -->|"第 i 行就是单 Token 向量"| R
+    M -->|"Q 和 K 参与"| S
+    S --> D --> C --> A --> W --> O
+    M -->|"V 提供被读取内容"| W
+```
+
+读图时先抓住两条关系：
+
+1. 小写 `q_i/k_i/v_i` 是大写 `Q/K/V` 的一行；
+2. 逐 Token 计算与矩阵并行计算等价，后者一次完成全部 Token。
+
 ## 当前位于哪里
 
 Day 1 已经让每个 Token 拥有自己的输入向量。本节只研究这些向量如何互相读取：

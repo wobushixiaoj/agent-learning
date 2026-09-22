@@ -52,7 +52,34 @@ def print_pair_table(name: str, matrix: torch.Tensor) -> None:
         print(f"| {token} | {values} |")
 
 
+def print_knowledge_map() -> None:
+    section("本页知识流程图")
+    print("```mermaid")
+    print("flowchart TD")
+    print('    X["输入矩阵 X<br/>2 个 Token × 3 个分量<br/>Shape: (2,3)"]')
+    print('    P["生成 Q / K / V<br/>真实模型: XW_Q、XW_K、XW_V<br/>本节简化: Q=K=V=X"]')
+    print('    M["完整矩阵 Q、K、V<br/>每个 Shape: (2,3)"]')
+    print('    R["取第 i 行<br/>单 Token 向量 q_i、k_i、v_i<br/>每个 Shape: (3,)"]')
+    print('    S["批量两两匹配 QK^T<br/>等价于每个 q_i 与所有 k_j 点积<br/>Shape: (2,2)"]')
+    print('    D["缩放<br/>除以 sqrt(d_k)=sqrt(3)"]')
+    print('    C["Causal Mask<br/>禁止读取未来 Token"]')
+    print('    A["Softmax 权重 A<br/>Shape: (2,2)"]')
+    print('    W["对 V 加权求和<br/>A @ V"]')
+    print('    O["上下文化输出 O<br/>Shape: (2,3)"]')
+    print("    X --> P --> M")
+    print('    M -->|"第 i 行就是单 Token 向量"| R')
+    print('    M -->|"Q 和 K 参与"| S')
+    print("    S --> D --> C --> A --> W --> O")
+    print('    M -->|"V 提供被读取内容"| W')
+    print("```")
+    print("\n读图时先抓住两条关系：")
+    print("1. 小写 `q_i/k_i/v_i` 是大写 `Q/K/V` 的一行；")
+    print("2. 逐 Token 计算与矩阵并行计算等价，后者一次完成全部 Token。")
+
+
 def main() -> None:
+    print_knowledge_map()
+
     section("课程位置与目标")
     print("你现在位于整条链路的这个位置：")
     code_block(
