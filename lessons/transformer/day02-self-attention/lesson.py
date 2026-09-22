@@ -101,6 +101,8 @@ def main() -> None:
     scale = math.sqrt(query.shape[-1])
     scaled_scores = raw_scores / scale
     unscaled_tools_weights = torch.softmax(raw_scores[1], dim=-1)
+    small_scale_weights = torch.softmax(torch.tensor([1.0, 2.0]), dim=-1)
+    large_scale_weights = torch.softmax(torch.tensor([10.0, 20.0]), dim=-1)
     causal_mask = torch.triu(
         torch.ones(len(TOKENS), len(TOKENS), dtype=torch.bool), diagonal=1
     )
@@ -193,15 +195,36 @@ def main() -> None:
     print("- 外侧的 `2×2`：2 个读取者分别匹配 2 个信息来源。")
     print("\n矩阵写法一次得到全部 4 个分数，和逐 Token 计算完全相同。")
 
-    subsection("5.2 为什么要除以 sqrt(d_k)")
-    print("点积是 `d_k` 个乘积的求和。向量维度越大，相加的项越多，")
-    print("点积分数的典型绝对值就越容易变大。")
-    print("\n标准解释是：如果各维分量大致独立、均值为 0、方差为 1，那么：")
+    subsection("5.2 缩放不是归一化：它在 Softmax 前控制尖锐程度")
+    print("你对 Softmax 的理解没问题：它确实把结果变成总和为 1 的比例。")
+    print("但 **总和归一化不等于消除输入尺度**。Softmax 内部有指数，分数整体放大后，")
+    print("最大项会占据更大的比例。")
+    small_low, small_high = small_scale_weights.tolist()
+    large_low, large_high = large_scale_weights.tolist()
+    print("\n两组分数的大小关系都是“第二项是第一项的 2 倍”，但 Softmax 结果不同：")
+    print("\n| Softmax 输入 | Softmax 输出 |")
+    print("| --- | --- |")
+    print(f"| `[1,2]` | `[{small_low:.3f},{small_high:.3f}]` |")
+    print(f"| `[10,20]` | `[{large_low:.6f},{large_high:.6f}]` |")
+    print("\n`[10,20]` 仍然会被归一化成和为 1，但几乎变成 `[0,1]`。")
+    print("因此缩放不是替 Softmax 做归一化，而是在 Softmax 前调节它有多“果断”。")
+    print("这也常被称为调节 Softmax 的**温度**。")
+
+    print("\n为什么维度变大时需要调节？点积是 `d_k` 个乘积的求和：")
+    code_block("q · k = q_1k_1 + q_2k_2 + ... + q_dk k_dk")
+    print("可以把每一项想成一次可能为正、也可能为负的小步。它们会部分抵消，")
+    print("但维度越多，最后偏离 0 的典型距离仍会变大，像随机游走：")
+    print("- 4 步后的典型偏移量约为 `sqrt(4)=2`；")
+    print("- 100 步后的典型偏移量约为 `sqrt(100)=10`。")
+    print("\n所以即使 Query 和 Key 没有变得“更相关”，只因维度从 4 增加到 100，")
+    print("点积分数的典型幅度也可能放大约 5 倍，Softmax 就会无故变得更尖锐。")
+
+    print("\n对应的标准统计表达是：如果各维分量大致独立、均值为 0、方差为 1，那么：")
     code_block(
         "q · k 的方差 ≈ d_k\n"
         "q · k 的标准差 ≈ sqrt(d_k)"
     )
-    print("因此除以 `sqrt(d_k)`，可以让不同向量维度下的分数保持在相近尺度。")
+    print("除以 `sqrt(d_k)`，正好把随维度增长的典型幅度拉回同一量级。")
     print("如果除以 `d_k`，分数通常会被压得过小；`sqrt(d_k)` 对应的是标准差增长速度。")
     print(f"\n本例 `d_k=3`，所以缩放因子 `sqrt(3)={scale:.3f}`。")
     print("注意这里的 3 是向量维度，不是 Token 数量 2。")
