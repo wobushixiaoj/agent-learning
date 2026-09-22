@@ -1,5 +1,33 @@
 # Day 2：Self-Attention 如何读取上下文
 
+## 先说目的：这页到底在学习什么
+
+> **本页目标：** 理解 GPT 的一个 Transformer 层在一次前向计算中，每个 Token
+> 如何只读取自己和前文，并生成包含上下文的新向量。
+
+对 Agent 工程师来说，学习它不是为了手算矩阵，而是为了理解：
+
+- LLM 为什么能根据上下文改变同一个 Token 的表示；
+- GPT 为什么必须从左到右生成，不能读取未来答案；
+- 后续的 KV Cache、长上下文成本和推理延迟问题从哪里来。
+
+这不是一套独立的“训练算法”或“推理算法”，而是两者都会调用的
+**Causal Self-Attention 前向计算机制**。
+
+| 使用场景 | Causal Mask / 因果约束如何出现 |
+| --- | --- |
+| 训练 | 整段 Token 并行计算；必须遮住右上角的未来位置，防止答案泄漏 |
+| 推理 Prefill | 整段 Prompt 并行计算并建立 KV Cache；同样遵守 Causal Mask |
+| 推理 Decode | 一次只计算新 Token，K/V 中只有过去和当前；没有未来 Key，通常不必显式创建完整 Mask |
+
+本页的 2-Token 示例一次计算两个位置，最接近训练或 Prefill 中的并行前向计算，
+但它讲的是三者共享的 Attention 核心，不讲训练或推理的完整流程。
+
+**本页明确不讨论：**
+
+- 训练专属：next-token label、loss、反向传播、参数更新；
+- 推理专属：采样、逐 Token 生成循环、KV Cache 的存取优化。
+
 ## 本页知识流程图
 
 ```mermaid
@@ -10,7 +38,7 @@ flowchart TD
     R["取第 i 行<br/>单 Token 向量 q_i、k_i、v_i<br/>每个 Shape: (3,)"]
     S["批量两两匹配 QK^T<br/>等价于每个 q_i 与所有 k_j 点积<br/>Shape: (2,2)"]
     D["缩放<br/>除以 sqrt(d_k)=sqrt(3)"]
-    C["Causal Mask<br/>禁止读取未来 Token"]
+    C["Causal Mask / 因果约束<br/>训练与 Prefill 常显式使用<br/>Decode 中通常由可见 Key 范围自然保证"]
     A["Softmax 权重 A<br/>Shape: (2,2)"]
     W["对 V 加权求和<br/>A @ V"]
     O["上下文化输出 O<br/>Shape: (2,3)"]
