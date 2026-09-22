@@ -16,11 +16,21 @@ Day 1 已经让每个 Token 拥有自己的输入向量。本节只研究这些�
 
 ## 先补一个前置：矩阵形状
 
-本节有 3 个 Token，每个 Token 使用 4 维向量：
+Shape 的严格数学含义始终是 `(行数, 列数)`。本节矩阵严格来说是 3 行 4 列：
 
 ```text
-X.shape = (Token 数量, 每个 Token 的向量维度) = (3, 4)
+X.shape = (行数, 列数) = (3, 4)
 ```
+
+然后才能解释本教程赋予行列的语义：每一行放一个 Token 的向量，每一列放向量的
+一个分量。因此在**本例的数据布局中**，也可以解释为：
+
+```text
+(Token 数量, 每个 Token 的向量维度) = (3, 4)
+```
+
+这两句话不冲突：前者是 Shape 的定义，后者是本例对行和列的语义映射。不能脱离
+具体数据布局，把 Shape 的第一个数字永远解释为 Token 数量。
 
 | 行 | Token | 四维向量 |
 | ---: | --- | --- |
@@ -76,7 +86,19 @@ Attention 此时想解决的朴素问题是：`tools` 和 `Agent` 匹不匹配�
 `Q @ K.T` 只是把这 9 次完全相同的“对应位置相乘再求和”一次性写完。矩阵乘法
 在这里不是新的业务动作，而是批量计算工具。
 
-### 3.1 为什么输出是 `(3, 3)`
+### 3.1 严格形状、标准理论与本例语义
+
+标准的二维数学记号可以写成：
+
+```text
+Q: (n_q, d_k)       n_q 个 Query，每个 Query 是 d_k 维
+K: (n_k, d_k)       n_k 个 Key，每个 Key 是 d_k 维
+K.T: (d_k, n_k)
+Q @ K.T: (n_q, n_k)
+```
+
+Self-Attention 中 Query 和 Key 来自同一序列，通常 `n_q = n_k = n`。本例取
+`n = 3`、`d_k = 4`，所以：
 
 ```text
 Q     的形状：(3, 4)
@@ -86,6 +108,14 @@ K.T   的形状：(4, 3)
 
 输出的每一行代表一个读取者，每一列代表一个候选信息来源。因此 3 个 Token
 两两匹配，会产生 `3 x 3 = 9` 个分数。
+
+真实多头 Attention 还会加入 batch 和 head 维度，常见内部布局是
+`(batch, heads, sequence_length, head_dim)`。不同框架的维度顺序可能不同，因此没有
+唯一“官方存储顺序”；稳定不变的是最后两维参与的计算关系和
+`softmax(QK^T / sqrt(d_k))V`。
+
+参考：[Attention Is All You Need](https://arxiv.org/abs/1706.03762)、
+[PyTorch MultiheadAttention](https://docs.pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html)。
 
 ### 3.2 一个格子如何计算
 
@@ -120,5 +150,5 @@ Agent Key   = [1, 0, 1, 0]
 
 [Day 2 教材输出](OUTPUT.md)
 
-学习者不需要亲自执行脚本。先只阅读步骤 3 的 `3.1`、`3.2`、`3.3`，找到第一个
+学习者不需要亲自执行脚本。先只阅读步骤 3 的 `3.0`、`3.1`、`3.2`、`3.3`，找到第一个
 仍然不清楚的小步骤即可。
