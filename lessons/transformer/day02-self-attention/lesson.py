@@ -106,7 +106,7 @@ def main() -> None:
     print("\n先用大小写严格区分单个 Token 和完整矩阵：")
     print("- 小写 `q_Agent`：`Agent` 自己的 Query 向量，长度为 3；")
     print("- 小写 `q_tools`：`tools` 自己的 Query 向量，长度为 3；")
-    print("- 大写 `Q`：把当前序列里所有 Token 的小写 q 上下叠放得到的完整矩阵。")
+    print("- 大写 `Q`：包含当前序列里所有 Token 的小写 q，每个 q 占一行。")
     print("\n本例的组装过程：")
     code_block(
         "q_Agent = [1,2,3]    # 单个 Token，一个长度为 3 的向量\n"
@@ -131,6 +131,30 @@ def main() -> None:
     print_matrix("Q", query)
     print_matrix("K", key)
     print_matrix("V", value)
+
+    subsection("2.1 大写 Q 是否真的参与计算？")
+    print("**会。** 但它和“每个 Token 分别计算”不是两套算法，而是同一算法的两种写法。")
+    print("\n真实模型通常直接对完整输入矩阵做投影：")
+    code_block(
+        "逐 Token 写法：q_Agent = x_Agent @ W_Q\n"
+        "               q_tools = x_tools @ W_Q\n\n"
+        "矩阵写法：     Q = X @ W_Q"
+    )
+    print("矩阵乘法会逐行处理 X，所以 `Q = X @ W_Q` 的第 1 行就是 `q_Agent`，")
+    print("第 2 行就是 `q_tools`。因此 Q 在数学上等于所有 q 按行排列；")
+    print("真实代码通常一次算出 Q，不一定真的先创建两个 q 再调用 `stack`。")
+    print("\n计算 Attention 时也完全等价：")
+    code_block(
+        "逐 Token：q_Agent @ K.T = [14,10]\n"
+        "           q_tools @ K.T = [10,14]\n\n"
+        "矩阵并行：Q @ K.T = [[14,10],\n"
+        "                      [10,14]]"
+    )
+    print("所以你的说法“每个 Token 的 qkv 去计算”在概念上是对的，但要补全：")
+    print("- 每个 Token 的 `q_i` 会和**所有 Token 的 `k_j`**计算匹配分数；")
+    print("- 再用这些分数形成权重，对**所有允许读取的 `v_j`**加权求和；")
+    print("- 大写 Q、K、V 只是把所有 Token 的向量装进矩阵，方便一次并行完成。")
+    print("\n> Q 不是额外产生的新信息；它是所有 q 的矩阵表示，也是实际并行计算使用的张量。")
 
     raw_scores = query @ key.T
     scale = math.sqrt(x.shape[-1])
