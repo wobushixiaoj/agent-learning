@@ -33,6 +33,17 @@ def explain_attention_rows(attention_weights: torch.Tensor) -> None:
         print(f"- {reader!r} 读取信息的比例：" + "，".join(parts))
 
 
+def print_pair_table(name: str, matrix: torch.Tensor) -> None:
+    print(f"\n{name}（行=读取者，列=信息来源）：")
+    header = "读取者\\来源".ljust(14) + "".join(
+        token.rjust(10) for token in TOKENS
+    )
+    print(header)
+    for token, row in zip(TOKENS, matrix.tolist()):
+        values = "".join(f"{value:10.3f}" for value in row)
+        print(token.ljust(14) + values)
+
+
 def main() -> None:
     section("Day 2：Self-Attention 如何让 Token 读取上下文")
     print("你现在位于整条链路的这个位置：")
@@ -84,17 +95,44 @@ def main() -> None:
     print_matrix("K", key)
     print_matrix("V", value)
 
-    scores = query @ key.T / math.sqrt(x.shape[-1])
+    raw_scores = query @ key.T
+    scale = math.sqrt(x.shape[-1])
+    scores = raw_scores / scale
 
     section("步骤 3：QK^T 计算 Token 两两之间的匹配分数")
-    print("读矩阵的方法：行表示谁在读取，列表示它准备从谁那里读取。")
-    print("行、列顺序都是：", TOKENS)
-    print_matrix("Attention 分数", scores)
-    print("\n例如最后一行属于 'tools'：")
-    print("- 对 'Agent' 的匹配分数是 0.5")
-    print("- 对 'uses' 的匹配分数是 0.5")
-    print("- 对自己的匹配分数是 1.5")
-    print("这里只是匹配分数，还不是最终读取比例。")
+    print("本步骤要回答：每个 Token 与每个 Token 的匹配程度是多少？")
+
+    print("\n3.1 为什么要写 K.T？")
+    print("Q 的形状是 (3, 4)：3 个 Token，每个 Query 有 4 个数。")
+    print("K 的形状也是 (3, 4)。")
+    print("K.T 表示把 K 转置，所以形状从 (3, 4) 变成 (4, 3)。")
+    print("这样才能进行矩阵乘法：")
+    print("  Q (3, 4) @ K.T (4, 3) -> 原始分数 (3, 3)")
+    print("中间的两个 4 对齐；结果保留外侧的 3 和 3。")
+    print("最终 3 x 3 表示：3 个读取者分别与 3 个信息来源进行匹配。")
+
+    print("\n3.2 一个格子的数字怎么计算？")
+    print("每个格子都是一行 Query 与一行 Key 的点积：")
+    print("  点积 = 对应位置相乘，再把乘积全部相加")
+    print("\n完整手算 'tools' 这一行：")
+    print("tools 的 Query = [1, 1, 0, 1]")
+    print("Agent 的 Key   = [1, 0, 1, 0]")
+    print("uses 的 Key    = [0, 1, 1, 0]")
+    print("tools 的 Key   = [1, 1, 0, 1]")
+    print("\ntools 与 Agent：1x1 + 1x0 + 0x1 + 1x0 = 1")
+    print("tools 与 uses： 1x0 + 1x1 + 0x1 + 1x0 = 1")
+    print("tools 与 tools：1x1 + 1x1 + 0x0 + 1x1 = 3")
+    print_pair_table("尚未缩放的 QK^T 原始分数", raw_scores)
+
+    print("\n3.3 为什么原始分数还要缩放？")
+    print(f"每个向量有 4 维，所以 sqrt(4) = {scale:.1f}。")
+    print("把每个原始分数都除以 2：")
+    print("  tools -> Agent：1 / 2 = 0.5")
+    print("  tools -> uses： 1 / 2 = 0.5")
+    print("  tools -> tools：3 / 2 = 1.5")
+    print("缩放用于避免向量维度较大时点积过大，让后面的 Softmax 过于极端。")
+    print_pair_table("缩放后的 Attention 分数", scores)
+    print("\n到这里得到的仍是匹配分数，还不是最终读取比例。")
 
     # GPT-style causal attention cannot read future tokens.
     causal_mask = torch.triu(
