@@ -17,8 +17,8 @@
 2. 全页知识流程图
 3. 最小示例、Shape 与符号表
 4. 从输入 X 得到 Q、K、V
-5. `QK^T` 的四个格子与缩放
-6. Causal Mask 与 Softmax
+5. `QK^T` 的四个格子、为什么缩放
+6. Causal Mask、Softmax 是什么及为什么需要
 7. 对 V 加权求和
 8. 一页总结
 

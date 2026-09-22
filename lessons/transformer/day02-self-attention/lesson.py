@@ -71,9 +71,9 @@ def print_knowledge_map() -> None:
     print('    M["完整矩阵 Q、K、V<br/>每个 Shape: (2,3)"]')
     print('    R["取第 i 行<br/>单 Token 向量 q_i、k_i、v_i<br/>每个 Shape: (3,)"]')
     print('    S["批量两两匹配 QK^T<br/>每个 q_i 与所有 k_j 点积<br/>Shape: (2,2)"]')
-    print('    D["缩放<br/>除以 sqrt(d_k)=sqrt(3)"]')
+    print('    D["缩放<br/>除以 sqrt(d_k)<br/>控制分数幅度"]')
     print('    C["Causal Mask<br/>禁止读取未来 Token"]')
-    print('    A["Softmax 权重 A<br/>Shape: (2,2)"]')
+    print('    A["Softmax 权重 A<br/>正数且每行和为 1<br/>Shape: (2,2)"]')
     print('    W["对 V 加权求和<br/>A @ V"]')
     print('    O["上下文化输出 O<br/>Shape: (2,3)"]')
     print("    X --> P --> M")
@@ -100,6 +100,7 @@ def main() -> None:
     raw_scores = query @ key.T
     scale = math.sqrt(query.shape[-1])
     scaled_scores = raw_scores / scale
+    unscaled_tools_weights = torch.softmax(raw_scores[1], dim=-1)
     causal_mask = torch.triu(
         torch.ones(len(TOKENS), len(TOKENS), dtype=torch.bool), diagonal=1
     )
@@ -192,22 +193,66 @@ def main() -> None:
     print("- 外侧的 `2×2`：2 个读取者分别匹配 2 个信息来源。")
     print("\n矩阵写法一次得到全部 4 个分数，和逐 Token 计算完全相同。")
 
-    subsection("5.2 缩放分数")
-    print(f"向量维度 `d_k=3`，所以缩放因子 `sqrt(3)={scale:.3f}`。")
-    print("注意使用的是向量维度 3，不是 Token 数量 2。")
+    subsection("5.2 为什么要除以 sqrt(d_k)")
+    print("点积是 `d_k` 个乘积的求和。向量维度越大，相加的项越多，")
+    print("点积分数的典型绝对值就越容易变大。")
+    print("\n标准解释是：如果各维分量大致独立、均值为 0、方差为 1，那么：")
+    code_block(
+        "q · k 的方差 ≈ d_k\n"
+        "q · k 的标准差 ≈ sqrt(d_k)"
+    )
+    print("因此除以 `sqrt(d_k)`，可以让不同向量维度下的分数保持在相近尺度。")
+    print("如果除以 `d_k`，分数通常会被压得过小；`sqrt(d_k)` 对应的是标准差增长速度。")
+    print(f"\n本例 `d_k=3`，所以缩放因子 `sqrt(3)={scale:.3f}`。")
+    print("注意这里的 3 是向量维度，不是 Token 数量 2。")
     code_block(
         "14 / 1.732 = 8.083\n"
         "10 / 1.732 = 5.774"
     )
     print_pair_table("缩放后的分数 S / sqrt(3)", scaled_scores)
+    unscaled_agent_weight, unscaled_self_weight = unscaled_tools_weights.tolist()
+    print("\n缩放的直接效果，可以用 `tools` 这一行做对比：")
+    print("\n| 输入 Softmax 的分数 | 得到的权重 | 现象 |")
+    print("| --- | --- | --- |")
+    print(
+        f"| 不缩放 `[10,14]` | `[{unscaled_agent_weight:.3f},"
+        f"{unscaled_self_weight:.3f}]` | 几乎只保留最大项 |"
+    )
+    print("| 缩放 `[5.774,8.083]` | `[0.090,0.910]` | 仍有偏好，但没有那么极端 |")
+    print("\n分数过大时，Softmax 容易接近 one-hot。训练中这会让梯度变小、学习不稳定；")
+    print("推理中则会让权重对细小分数变化过于敏感。缩放先把输入控制在合适范围。")
 
     section("6. Causal Mask 与 Softmax")
+    subsection("6.1 Causal Mask：先排除禁止读取的位置")
     print("`Agent` 位于 `tools` 左边。GPT 从左到右生成，因此：")
     print("- `Agent` 只能读取自己，不能读取未来的 `tools`；")
     print("- `tools` 可以读取前面的 `Agent` 和自己。")
     print("\nMask 把禁止读取的位置改成 `-inf`：")
     print_pair_table("Mask 后的分数", masked_scores)
-    print("\nSoftmax 再把每一行变成和为 1 的读取比例：")
+
+    subsection("6.2 Softmax 是什么")
+    print("Softmax 把一行任意实数分数转换为一组正数权重，并让这一行的权重之和等于 1：")
+    code_block("softmax(s_i) = exp(s_i) / sum_j(exp(s_j))")
+    print("实际计算通常先减去本行最大值，数值更稳定，而且不会改变最终比例。")
+    print("\n以 `tools` 的 Mask 后分数 `[5.774,8.083]` 为例：")
+    code_block(
+        "① 减去最大值 8.083：[-2.309, 0]\n"
+        "② 取指数：           [exp(-2.309), exp(0)] ≈ [0.099, 1.000]\n"
+        "③ 除以总和 1.099：   [0.099/1.099, 1/1.099]\n"
+        "④ 得到权重：         [0.090, 0.910]"
+    )
+    print("`-inf` 的指数是 0，因此被 Mask 的位置经过 Softmax 后权重正好是 0。")
+
+    subsection("6.3 为什么需要 Softmax")
+    print("原始点积分数不能直接当作稳定的混合比例，因为它们可能为负、数值范围不固定，")
+    print("也不保证总和为 1。Softmax 提供了四个性质：")
+    print("1. 所有权重都大于等于 0；")
+    print("2. 每一行权重之和为 1，可以解释成读取比例；")
+    print("3. 分数越大，权重越大，同时保留相对排序；")
+    print("4. 函数可微，训练时可以通过反向传播学习 Q/K/V 投影参数。")
+    print("\nSoftmax 不是理论上唯一的归一化选择，但它是标准 Scaled Dot-Product Attention 的选择。")
+    print("Attention 权重可以理解为本次读取 V 的比例，但不能直接当作模型答案置信度。")
+    print("\n将每一行经过 Softmax：")
     print_pair_table("Attention 权重 A", attention_weights)
     row_sums = [round(value, 3) for value in attention_weights.sum(dim=-1).tolist()]
     print(f"\n每一行权重之和：`{row_sums}`")
@@ -243,6 +288,8 @@ def main() -> None:
     print("| `q_i` 与 `Q` | `q_i` 是单 Token 向量；Q 收集全部 Token 的 q |")
     print("| 逐 Token 与矩阵计算 | 数学等价；矩阵写法用于并行 |")
     print("| `(2,3)` | 先读 2 行 3 列，再解释为 2 个 Token × 3 个分量 |")
+    print("| 缩放 | 抵消点积分数随维度增长，避免 Softmax 过早饱和 |")
+    print("| Softmax | 把任意分数变成非负、每行和为 1 的读取权重 |")
     print("| Causal Mask | 训练和推理共用的因果约束，不是训练或推理专属 |")
     print("\n> **核心结论：** Self-Attention 让每个 Token 按权重读取允许访问的上下文，")
     print("> 从自己的输入向量变成包含上下文的输出向量。")

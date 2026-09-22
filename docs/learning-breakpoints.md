@@ -28,6 +28,7 @@
 | ATT-010 | 能否在页面顶部用流程图或时序图表达这一页知识点的关系？ | context-induced | 章节已有局部解释，但缺少进入细节前可反复定位的全局结构图 | 在 Day 2 顶部增加 Mermaid 知识流程图，串联 X、QKV、单 Token 行向量、QK^T、缩放、Mask、Softmax、V 加权与输出，并标注关键 Shape |
 | ATT-011 | 页面应该先说明知识点的目的；看到 Causal Mask 时不清楚这是推理过程还是训练过程 | context-induced | 教材先展示机制流程，却没有区分模型前向计算、训练专属步骤和推理专属步骤 | 在流程图前增加课程定位：Causal Self-Attention 是训练与推理共用的前向机制；对比训练、推理 Prefill、推理 Decode 中因果约束的实现，并列出本课不涉及 loss/backprop、采样和 KV Cache |
 | ATT-012 | 整个文档结构开始有点混乱，需要重新整理 | context-induced | 教材按提问时间不断追加补丁，导致目的、符号、向量/矩阵视角和训练/推理边界重复出现，知识依赖顺序被打散 | 按“目的与边界 → 全局图 → 示例与符号 → QKV → 匹配与缩放 → Mask/Softmax → V 加权 → 总结”重写 OUTPUT；README 缩减为章节导航，历史问题留在断点索引 |
+| ATT-013 | 为什么需要缩放？Softmax 是什么，为什么需要？ | prerequisite | 教材只展示了除以 `sqrt(d_k)` 和 Softmax 的结果，没有解释维度增长、分数饱和与归一化权重之间的因果关系 | 增加不缩放/缩放后的 Softmax 对照；解释点积方差随 `d_k` 增长及除以 `sqrt(d_k)` 的原因；逐步手算 Softmax，并说明正数、和为 1、Mask 归零和可微分的作用 |
 
 ## 学习方式
 
