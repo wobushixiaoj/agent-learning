@@ -196,7 +196,7 @@ def main() -> None:
     print("\n矩阵写法一次得到全部 4 个分数，和逐 Token 计算完全相同。")
 
     subsection("5.2 缩放不是归一化：它在 Softmax 前控制尖锐程度")
-    print("你对 Softmax 的理解没问题：它确实把结果变成总和为 1 的比例。")
+    print("Softmax 会把结果转换成总和为 1 的比例。")
     print("但 **总和归一化不等于消除输入尺度**。Softmax 内部有指数，分数整体放大后，")
     print("最大项会占据更大的比例。")
     small_low, small_high = small_scale_weights.tolist()
