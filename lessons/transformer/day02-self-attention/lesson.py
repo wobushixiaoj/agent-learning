@@ -130,9 +130,12 @@ def main() -> None:
 
     subsection("5.2 Scaling：控制数值尺度")
     print("**核心结论：** 缩放保留分数排序，只压低由向量维度带来的额外幅度。")
-    print("\n#### 当前案例怎么算\n")
-    print("`3` 来自 Query 和 Key 的向量长度：`q_打=[1,1,0]` 一共有 3 个分量，")
-    print("所以本例 `d_k=3`，缩放因子是：")
+    print("\n#### 把本例代入缩放公式\n")
+    print("缩放公式要求把每个匹配分数除以 `sqrt(d_k)`。先确定公式中的 `d_k`：")
+    print("- `d_k` 表示 Query 和 Key 向量的维度；")
+    print("- 本例 `q_打=[1,1,0]`，向量包含 3 个分量；")
+    print("- 因此本例 `d_k=3`。")
+    print("\n再把 `d_k=3` 代入缩放因子：")
     code_block("sqrt(d_k) = sqrt(3) = 1.732")
     print("把三个原始分数分别除以 1.732：")
     code_block(
@@ -188,7 +191,7 @@ def main() -> None:
 
     subsection("5.4 Softmax：把分数变成分配比例")
     print("**核心结论：** Softmax 把允许读取的任意分数转换成非负、总和为 1 的权重。")
-    print("\n#### 当前案例怎么算\n")
+    print("\n#### 把本例代入 Softmax\n")
     print("Softmax 对 `[0.577,1.155,0.577]` 做三步。实际计算先减去最大值，")
     print("这样指数不会产生过大的数，而且最终比例不变：")
     code_block(
