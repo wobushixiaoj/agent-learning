@@ -107,25 +107,25 @@ def main() -> None:
 
     section("5. 从匹配分数到读取比例")
     subsection("5.1 先看这一层解决的三个问题")
-    print("输入是匹配分数 `[1,2,1]`，目标是得到可以混合 Value 的读取比例。")
+    print("输入是带 Token 标签的匹配分数，目标是得到可以混合 Value 的读取比例。")
     print("中间的三个机制分别负责不同问题：")
     code_block(
-        "匹配分数 [1,2,1]\n"
+        "匹配分数 [我:1, 喜欢:2, 打:1]\n"
         "├─ Scaling：控制数值尺度\n"
         "├─ Causal Mask：控制哪些位置允许读取\n"
         "└─ Softmax：把允许读取的分数变成比例\n"
-        "最终权重 [0.264,0.471,0.264]"
+        "最终权重 [我:0.264, 喜欢:0.471, 打:0.264]"
     )
     print("| 机制 | 它回答的问题 | 本例结果 |")
     print("| --- | --- | --- |")
     print(
-        f"| Scaling | 分数幅度是否合适？ | `[{last_scaled[0]:.3f}, "
-        f"{last_scaled[1]:.3f}, {last_scaled[2]:.3f}]` |"
+        f"| Scaling | 分数幅度是否合适？ | `我:{last_scaled[0]:.3f} / "
+        f"喜欢:{last_scaled[1]:.3f} / 打:{last_scaled[2]:.3f}` |"
     )
     print("| Causal Mask | 哪些位置允许读取？ | 三个位置都允许 |")
     print(
-        f"| Softmax | 每个位置读取多少？ | `[{last_weights[0]:.3f}, "
-        f"{last_weights[1]:.3f}, {last_weights[2]:.3f}]` |"
+        f"| Softmax | 每个位置读取多少？ | `我:{last_weights[0]:.3f} / "
+        f"喜欢:{last_weights[1]:.3f} / 打:{last_weights[2]:.3f}` |"
     )
 
     subsection("5.2 Scaling：控制数值尺度")
@@ -137,81 +137,89 @@ def main() -> None:
     print("- 因此本例 `d_k=3`。")
     print("\n再把 `d_k=3` 代入缩放因子：")
     code_block("sqrt(d_k) = sqrt(3) = 1.732")
-    print("把三个原始分数分别除以 1.732：")
-    code_block(
-        "1 / 1.732 = 0.577\n"
-        "2 / 1.732 = 1.155\n"
-        "1 / 1.732 = 0.577\n\n"
-        "[1,2,1] -> [0.577,1.155,0.577]"
-    )
-    print("缩放没有改变大小顺序：`喜欢` 的分数仍然最高。它只控制分数幅度，")
+    print("三个 Token 使用同一个除数 `1.732`：")
+    print("\n| 信息来源 Token | 原始匹配分数 | 缩放计算 | 缩放后分数 |")
+    print("| --- | ---: | --- | ---: |")
+    print("| `我` | 1 | `1 / 1.732` | 0.577 |")
+    print("| `喜欢` | 2 | `2 / 1.732` | 1.155 |")
+    print("| `打` | 1 | `1 / 1.732` | 0.577 |")
+    print("\n缩放没有改变大小顺序：`喜欢` 的分数仍然最高。它只控制分数幅度，")
     print("避免向量维度增大时，点积分数自然变大并让 Softmax 过度极端。")
 
-    print("\n#### 验证一：只改变分数差距\n")
-    print("固定两个候选项，并固定第二项分数更高。唯一主动改变的变量是两项的分数差距：")
-    code_block(
-        "分数差距 1：[0,1] -> Softmax -> [26.9%,73.1%]\n"
-        "分数差距 2：[0,2] -> Softmax -> [11.9%,88.1%]\n"
-        "分数差距 4：[0,4] -> Softmax -> [ 1.8%,98.2%]"
-    )
-    print("**观察结果：** 只要输入差距变大，Softmax 就会让输出比例变得更极端。")
+    print("\n#### 验证一：独立二 Token 实验，只改变“喜欢”的分数\n")
+    print("| 实验 | 固定输入：`我`的分数 | 唯一自变量：`喜欢`的分数 | 观测结果：Softmax 权重（我 / 喜欢） |")
+    print("| --- | ---: | ---: | --- |")
+    print("| A1 | 0 | 1 | `26.9% / 73.1%` |")
+    print("| A2 | 0 | 2 | `11.9% / 88.1%` |")
+    print("| A3 | 0 | 4 | `1.8% / 98.2%` |")
+    print("\n**观察结果：** 只要输入差距变大，Softmax 就会让输出比例变得更极端。")
 
     print("\n#### 验证二：固定同一组分数，只改变是否缩放\n")
-    print("现在固定 `d_k=16`、原始分数 `[0,4]` 和同一个 Softmax。")
-    print("唯一主动改变的条件是：进入 Softmax 前是否除以 `sqrt(16)=4`。")
-    code_block(
-        "不缩放：\n"
-        "[0,4] -> Softmax -> [1.8%,98.2%]\n\n"
-        "缩放：\n"
-        "[0,4] / 4 = [0,1]\n"
-        "[0,1] -> Softmax -> [26.9%,73.1%]"
-    )
-    print("**观察结果：** 同一组原始分数经过缩放后，大小顺序不变，但权重不再过度极端。")
+    print("| 固定条件 | 固定值 |")
+    print("| --- | --- |")
+    print("| 向量维度 | `d_k=16`，因此 `sqrt(d_k)=4` |")
+    print("| 原始分数 | `我:0 / 喜欢:4` |")
+    print("| 归一化函数 | 同一个 Softmax |")
+    print("\n| 唯一自变量：缩放方式 | 进入 Softmax 的分数（我 / 喜欢） | 观测结果：权重（我 / 喜欢） |")
+    print("| --- | --- | --- |")
+    print("| 不缩放 | `0 / 4` | `1.8% / 98.2%` |")
+    print("| 除以 4 | `0 / 1` | `26.9% / 73.1%` |")
+    print("\n**观察结果：** 同一组原始分数经过缩放后，大小顺序不变，但权重不再过度极端。")
 
     print("\n#### 统计规律如何连接两个验证\n")
-    print("在真实模型的统计规律中，`d_k` 增大时，点积分数的典型幅度约按 `sqrt(d_k)` 增长。")
-    print("验证一说明“分数差距变大”会让 Softmax 变尖；验证二说明缩放可以抵消这部分放大。")
-    print("真实模型每次点积的具体分数不会固定等于 `[0,4]`，这里仅用于控制变量观察。")
+    code_block(
+        "d_k 增大\n"
+        "-> 点积分数的典型幅度约按 sqrt(d_k) 增长\n"
+        "-> 验证一：分数差距增大会让 Softmax 权重更极端\n"
+        "-> 验证二：除以 sqrt(d_k) 可以抵消这部分额外放大"
+    )
+    print("真实模型每次点积的具体分数不会固定等于 `我:0 / 喜欢:4`，这里仅用于控制变量观察。")
 
     subsection("5.3 Causal Mask：控制访问权限")
     print("**核心结论：** Mask 不负责判断相关性，只负责把未来位置彻底排除。")
     print("\n#### 当前案例\n")
     print("Causal 的意思是：当前位置只能读取自己和左侧，不能读取右侧的未来 Token。")
-    print("当前 Query 来自最后一个位置 `打`：")
-    code_block(
-        "位置：       [我, 喜欢, 打]\n"
-        "打能否读取： [是,   是, 是]\n"
-        "Mask 数值：  [0,    0,  0]"
-    )
-    print("Mask 会加到缩放分数上。三个位置都允许读取，所以这一行数值不变：")
-    code_block("[0.577,1.155,0.577] + [0,0,0] = [0.577,1.155,0.577]")
-    print("如果当前 Query 是中间的 `喜欢`，右侧的 `打` 属于未来位置，Mask 才会是：")
-    code_block("[我, 喜欢, 打] -> [0, 0, -inf]")
-    print("`-inf` 经过 Softmax 后会得到 0 权重，表示完全禁止读取。")
+    print("当前 Query Token 是最后一个位置的 `打`：")
+    print("\n| 信息来源 Token | 相对 `打` 的位置 | 是否允许读取 | Mask 值 | Mask 前分数 | Mask 后分数 |")
+    print("| --- | --- | --- | ---: | ---: | ---: |")
+    print("| `我` | 左侧 | 是 | 0 | 0.577 | 0.577 |")
+    print("| `喜欢` | 左侧 | 是 | 0 | 1.155 | 1.155 |")
+    print("| `打` | 当前 | 是 | 0 | 0.577 | 0.577 |")
+    print("\n作为对照，如果 Query Token 是中间位置的 `喜欢`：")
+    print("\n| 信息来源 Token | 相对 `喜欢` 的位置 | 是否允许读取 | Mask 值 |")
+    print("| --- | --- | --- | ---: |")
+    print("| `我` | 左侧 | 是 | 0 |")
+    print("| `喜欢` | 当前 | 是 | 0 |")
+    print("| `打` | 右侧未来 | 否 | `-inf` |")
+    print("\n`-inf` 经过 Softmax 后会得到 0 权重，表示完全禁止读取。")
 
     subsection("5.4 Softmax：把分数变成分配比例")
     print("**核心结论：** Softmax 把允许读取的任意分数转换成非负、总和为 1 的权重。")
     print("\n#### 把本例代入 Softmax\n")
-    print("Softmax 对 `[0.577,1.155,0.577]` 做三步。实际计算先减去最大值，")
-    print("这样指数不会产生过大的数，而且最终比例不变：")
-    code_block(
-        f"① 减去最大值 1.155：[{last_shifted[0]:.3f}, "
-        f"{last_shifted[1]:.3f}, {last_shifted[2]:.3f}]\n"
-        f"② 每项取 exp：       [{last_exp[0]:.3f}, {last_exp[1]:.3f}, "
-        f"{last_exp[2]:.3f}]\n"
-        f"③ 除以总和 {last_exp_sum:.3f}："
-        f"[{last_weights[0]:.3f}, {last_weights[1]:.3f}, {last_weights[2]:.3f}]"
-    )
-    print("现在三个数都非负，并且总和为 1，所以可以直接解释成读取比例。")
+    print("实际计算先减去三个分数中的最大值 `1.155`，避免指数产生过大的数：")
+    print("\n| 信息来源 Token | Mask 后分数 | 减去最大值 1.155 | 取 `exp` | 除以总和 2.123 后的权重 |")
+    print("| --- | ---: | ---: | ---: | ---: |")
+    for token, score, shifted, exp_value, weight in zip(
+        TOKENS, last_scaled, last_shifted, last_exp, last_weights
+    ):
+        print(
+            f"| `{token}` | {score:.3f} | {shifted:.3f} | "
+            f"{exp_value:.3f} | {weight:.3f} |"
+        )
+    print(f"| **合计** |  |  | **{last_exp_sum:.3f}** | **1.000** |")
+    print("\n现在三个数都非负，并且总和为 1，所以可以直接解释成读取比例。")
 
     subsection("5.5 把三个机制重新合起来")
-    code_block(
-        "[1,2,1]\n"
-        "-> Scaling 控制幅度：[0.577,1.155,0.577]\n"
-        "-> Mask 检查权限：三个位置都保留\n"
-        "-> Softmax 分配比例：[0.264,0.471,0.264]"
-    )
-    print("这组结果最终只表达一句话：")
+    print("| 信息来源 Token | 原始匹配分数 | Scaling 后 | Mask 后 | Softmax 权重 |")
+    print("| --- | ---: | ---: | ---: | ---: |")
+    for token, raw, scaled, masked, weight in zip(
+        TOKENS, last_raw, last_scaled, masked_scores[-1], last_weights
+    ):
+        print(
+            f"| `{token}` | {raw:.3f} | {scaled:.3f} | "
+            f"{masked:.3f} | {weight:.3f} |"
+        )
+    print("\n这组结果最终只表达一句话：")
     print(
         f"> `打` 从 `我` 读取 {last_weights[0] * 100:.1f}%，从 `喜欢` 读取 "
         f"{last_weights[1] * 100:.1f}%，从自己读取 {last_weights[2] * 100:.1f}%。"
